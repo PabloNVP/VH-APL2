@@ -23,12 +23,18 @@
 
 using namespace std;
 
+/******************************************
+ * Estructura del mensaje cliente/servidor
+******************************************/
 struct message {
     char type;
     char from[128];
     char content[1024];
 };
 
+/******************************************
+ * Estructura de formato de las preguntas
+******************************************/
 struct question{
     char quest[256];
     int opctionCorrect;
@@ -37,36 +43,70 @@ struct question{
     char optionThree[64];
 };
 
-struct cli{
-    static int getUserResponse(char type, question q){
-        int option;
-
-        cout << type << ") "<< q.quest << endl;
-        cout << "   1)" << q.optionOne << endl;
-        cout << "   2)" << q.optionTwo << endl;
-        cout << "   3)" << q.optionThree << endl;
-                    
-        do {
-            cout << "Ingresa una opción: ";
-            cin >> option;
-
-            if (option < 1 || option > 3) {
-                cout << "Opción inválida. Por favor, ingrese una opción: " << endl;
-            }
-                        
-            if (cin.fail()) {
-                cin.clear();
-                cin.ignore(10000, '\n');
-            }
-
-        } while (option < 1 || option > 3);
-
-        return option;
+/***********************************************
+ * Estructura que maneja la salida por pantalla
+***********************************************/
+struct consolePrinter{
+    void printHelp(const char* script){
+        cout << "Uso: " <<  script << " -p|--puerto <PUERTO> -s|--servidor <IP> -n|--nickname <NICKNAME> " << endl;
+        cout << "Cliente para conectarse al servidor de Preguntados." << endl;
+        cout << "Opciones:" << endl;
+        cout << "  -p, --puerto         Nro de puerto (Requerido)" << endl;
+        cout << "  -s, --servidor       Dirección IP o nombre del servidor (Requerido)" << endl;
+        cout << "  -s, --nickname       Nickname del usuario (Requerido)" << endl;
+        cout << "  -h, --help           Muestra la ayuda" << endl;
     }
+
+    void printError(const char* script){
+        cout << "Error de sintaxis: Utilice " << script << " -h o --help para obtener ayuda." << endl;
+    }
+
+    void printBeginGame(){
+        cout << "================================" << endl;
+        cout << "Partida iniciada. ¡Buena suerte!" << endl;
+        cout << "================================" << endl;
+    }
+
+    void printCorrectQuestion(){
+        cout << "--------------------" << endl;
+        cout << "¡Respuesta correcta!" << endl;
+        cout << "--------------------" << endl;
+    }
+
+    void printIncorrectQuestion(){
+        cout << "----------------------" << endl;
+        cout << "¡Respuesta incorrecta!" << endl;
+        cout << "----------------------" << endl;
+    }
+
+    void printWinner(char* winner){
+        cout << "=========================================" << endl;
+        cout << "El ganador de la partida es: " << winner << endl;
+        cout << "=========================================" << endl;
+    }
+
+    void printNextGame(){
+        cout << "¿Desea jugar otra partida?" << endl;
+        cout << "   1) SI" << endl;
+        cout << "   2) NO" << endl;
+    }
+
+    void printOptionsQuestion(char type, question* q){
+        cout << type << ") "<< q->quest << endl;
+        cout << "   1)" << q->optionOne << endl;
+        cout << "   2)" << q->optionTwo << endl;
+        cout << "   3)" << q->optionThree << endl;
+    }
+
+    void printWaitingGame(){
+        cout << "Esperando rivales para comenzar la partida..." << endl;
+    }
+
 };
 
 class Cliente{
     private:
+        consolePrinter cp;
         int port;
         string ip;
         string nickname;
@@ -86,17 +126,11 @@ class Cliente{
         }
 
         void printHelp(const char* script){
-            cout << "Uso: " <<  script << " -p|--puerto <PUERTO> -s|--servidor <IP> -n|--nickname <NICKNAME> " << endl;
-            cout << "Cliente para conectarse al servidor de Preguntados." << endl;
-            cout << "Opciones:" << endl;
-            cout << "  -p, --puerto         Nro de puerto (Requerido)" << endl;
-            cout << "  -s, --servidor       Dirección IP o nombre del servidor (Requerido)" << endl;
-            cout << "  -s, --nickname       Nickname del usuario (Requerido)" << endl;
-            cout << "  -h, --help           Muestra la ayuda" << endl;
+            cp.printHelp(script);
         }
 
         void printError(const char* script){ 
-            cout << "Error de sintaxis: Utilice " << script << " -h o --help para obtener ayuda." << endl;
+            cp.printError(script);
         }
 
         bool validateParameters(int argc, const char* argv[]){
@@ -192,9 +226,9 @@ class Cliente{
 
         bool run(){
             memset(&this->request, 0, sizeof(this->request));
-            int option;
+            int option, numQuest=0;
 
-            cout << "Esperando rivales para comenzar la partida..." << endl;
+            cp.printWaitingGame();
 
             while ((this->bytesRecv = recv(this->socketCommunication, &this->request, sizeof(this->request), 0)) > 0)
             {
@@ -203,66 +237,43 @@ class Cliente{
                     memcpy(&q, this->request.content, sizeof(q));
 
                     if(this->begin){
-                        cout << "================================" << endl;
-                        cout << "Partida iniciada. ¡Buena suerte!" << endl;
-                        cout << "================================" << endl;
+                        cp.printBeginGame();
                         this->begin = false;
                     }
 
-                    option = cli::getUserResponse(this->request.type, q); //DEVOLVER RESPUESTA
+                    option = this->getUserResponse('A'+(numQuest++), &q, 1, 3);
 
                     if(option == q.opctionCorrect){
-                        cout << "--------------------" << endl;
-                        cout << "¡Respuesta correcta!" << endl;
-                        cout << "--------------------" << endl;
+                        cp.printCorrectQuestion();
                     }else{
-                        cout << "----------------------" << endl;
-                        cout << "¡Respuesta incorrecta!" << endl;
-                        cout << "----------------------" << endl;
+                        cp.printIncorrectQuestion();
                     }
 
                     memset(&this->response, 0, sizeof(this->response));
-                    //memcpy(msg.from, this->nickname.c_str(), sizeof(this->nickname.c_str()));
                     this->response.type = 'R';
+                    memcpy(this->response.from, this->nickname.c_str(), sizeof(this->nickname.c_str()));
+                    memcpy(this->response.content, to_string(option).c_str(), to_string(option).size());
                     send(this->socketCommunication, &this->response, sizeof(this->response), 0);
                 }
 
                 if(this->request.type == 'E'){
-                    cout << "======================================================" << endl;
                     cout << "Partida finalizada. Esperando a los demás jugadores..." << endl;
-                    cout << "======================================================" << endl;
                     this->begin = true;
                 }
 
                 if(this->request.type == 'Z'){
-                    cout << "¿Desea jugar otra partida?" << endl;
-                    cout << "   1) SI" << endl;
-                    cout << "   2) NO" << endl;
                     
-                    do {
-                        cout << "Ingresa una opción (1 o 2): ";
-                        cin >> option;
-
-                        // Verificar si la opción es válida
-                        if (option < 1 || option > 2) {
-                            cout << "Opción inválida. Por favor, ingresa 1 o 2" << endl;
-                        }
-                        
-                        // Limpiar caracter invalido
-                        if (cin.fail()) {
-                            cin.clear();
-                            cin.ignore(10000, '\n');
-                        }
-
-                    } while (option < 1 || option > 2);
-
                     memset(&this->response, 0, sizeof(this->response));
+                    
+                    cp.printWinner(request.content);
+
+                    option = this->getUserResponse(this->response.type, nullptr, 1, 2);
+
                     if(option == 1)
                         this->response.type = 'S';
                     else 
                         this->response.type = 'N';
 
-                    //memcpy(msg.from, this->nickname.c_str(), sizeof(this->nickname.c_str()));
                     send(this->socketCommunication, &this->response, sizeof(this->response), 0);
                 }
                 
@@ -278,10 +289,31 @@ class Cliente{
             return EXIT_SUCCESS;
         }
 
-        bool protocol(message msg){
+        int getUserResponse(char type, question* q, int minOpc, int maxOpc){
+            int option;
 
+            if(type == 'Z'){
+                cp.printNextGame();
+            }else{
+               cp.printOptionsQuestion(type, q);
+            }
+                        
+            do {
+                cout << "Ingresa una opción: ";
+                cin >> option;
 
-            return EXIT_SUCCESS;
+                if (option < minOpc || option > maxOpc) {
+                    cout << "Opción inválida. Por favor, ingrese una opción: " << endl;
+                }
+                            
+                if (cin.fail()) {
+                    cin.clear();
+                    cin.ignore(10000, '\n');
+                }
+
+            } while (option < minOpc || option > maxOpc);
+
+            return option;
         }
 };
 

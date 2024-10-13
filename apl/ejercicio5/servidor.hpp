@@ -30,18 +30,32 @@
 
 using namespace std;
 
+/******************************************
+ * Estructura del mensaje cliente/servidor
+******************************************/
 struct message {
     char type;
     char from[128];
     char content[1024];
 };
 
+/******************************************
+ * Estructura de datos del cliente
+******************************************/
 struct client {
     string name;
     int score;
     int questions;
+
+    void setName(string name){
+        if(this->name == "")
+            this->name = name;
+    }
 };
 
+/******************************************
+ * Estructura de formato de las preguntas
+******************************************/
 struct question{
     char quest[256];
     int opctionCorrect;
@@ -50,6 +64,9 @@ struct question{
     char optionThree[64];
 };
 
+/******************************************
+ * Estructura de datos de la sala
+******************************************/
 struct room{
     int num;
     vector<int> serieQuestions;
@@ -309,7 +326,13 @@ class Servidor {
                 }
 
                 if(msg.type == 'R'){
-                    cout << "Llego la respuesta" << endl;
+                    userClient->setName(msg.from);
+
+                    if(server->questions[yourRoom->serieQuestions[numQuest-1]].opctionCorrect == stoi(msg.content)){
+                        userClient->score++;
+                    }
+
+                    cout << userClient->name << " ; " << userClient->score << endl;
 
                     if(numQuest == server->questionsLimit){
 
@@ -326,8 +349,17 @@ class Servidor {
                             yourRoom->cv.wait(lock, [&] { return yourRoom->endThread == server->getUserLimit(); });
                         }
 
+                        /** Calcular resultado */
+                        int max = -1;
+                        memset(&msg, 0, sizeof(msg));
                         msg.type = 'Z';
-                        memset(msg.content, 0, sizeof(msg.content));
+                        for (auto& user : server->games[yourRoom->num]) {        
+                            if(max < user.second.score){
+                                memcpy(msg.content, user.second.name.c_str(), user.second.name.size());
+                                max = user.second.score;
+                            }
+                        }
+                        
                         send(socket, &msg, sizeof(msg), 0);
                         continue;
                     }
