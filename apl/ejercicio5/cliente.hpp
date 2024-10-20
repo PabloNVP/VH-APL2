@@ -1,6 +1,9 @@
 #ifndef CLIENTE_HPP
 #define CLIENTE_HPP
 
+/******************************************
+ * Librerias del cliente
+******************************************/
 #include <iostream>
 #include <cstring> 
 #include <unistd.h> 
@@ -8,6 +11,7 @@
 #include <sys/socket.h>  
 #include <netdb.h>
 #include <csignal>
+#include <atomic>
 
 /******************************************************
 ###                 INTEGRANTES                     ###
@@ -53,7 +57,7 @@ struct consolePrinter{
         cout << "Opciones:" << endl;
         cout << "  -p, --puerto         Nro de puerto (Requerido)" << endl;
         cout << "  -s, --servidor       Dirección IP o nombre del servidor (Requerido)" << endl;
-        cout << "  -s, --nickname       Nickname del usuario (Requerido)" << endl;
+        cout << "  -n, --nickname       Nickname del usuario (Requerido)" << endl;
         cout << "  -h, --help           Muestra la ayuda" << endl;
     }
 
@@ -80,9 +84,9 @@ struct consolePrinter{
     }
 
     void printWinner(char* winner){
-        cout << "=========================================" << endl;
-        cout << "El ganador de la partida es: " << winner << endl;
-        cout << "=========================================" << endl;
+        cout << "==========================================================================" << endl;
+        cout << winner << endl;
+        cout << "==========================================================================" << endl;
     }
 
     void printNextGame(){
@@ -102,8 +106,32 @@ struct consolePrinter{
         cout << "Esperando rivales para comenzar la partida..." << endl;
     }
 
+    void printWelcome(){
+        cout << "==============================" << endl;
+        cout << "¡¡¡ Bienvenido a Pregunta2 !!!" << endl;
+        cout << "==============================" << endl;
+    }
+
+    void printExit(){
+        cout << "===================================" << endl;
+        cout << "¡¡¡ Gracias por jugar Pregunta2 !!!" << endl;
+        cout << "===================================" << endl;
+    }
+
+    void printClose(){
+        cout << "El cliente se ha cerrado correctamente." << endl;
+    }
+
 };
 
+/**
+ * 
+ */
+bool running = false;
+
+/***********************************************
+ * Clase principal del cliente de preguntados
+***********************************************/
 class Cliente{
     private:
         consolePrinter cp;
@@ -122,7 +150,15 @@ class Cliente{
         }
 
         static void signal_handler(int signal_number){
-            return;
+            running = false;
+        }
+
+        void printWelcome(){
+            cp.printWelcome();
+        }
+        
+        void printClose(){
+            cp.printClose();
         }
 
         void printHelp(const char* script){
@@ -200,9 +236,9 @@ class Cliente{
                 return EXIT_FAILURE;
             }
 
-            // Configurar el timeout del socket.
+            //  Configurar el timeout del socket.
             struct timeval timeout;
-            timeout.tv_sec = 360;  // Segundos
+            timeout.tv_sec = 300;  // Segundos
             timeout.tv_usec = 0;  // Microsegundos
 
             // Establecer timeout para los mensaje en el socket.
@@ -226,62 +262,81 @@ class Cliente{
 
         bool run(){
             memset(&this->request, 0, sizeof(this->request));
-            int option, numQuest=0;
+            int numQuest=0, option = 0;
 
             cp.printWaitingGame();
 
-            while ((this->bytesRecv = recv(this->socketCommunication, &this->request, sizeof(this->request), 0)) > 0)
-            {
-                if(this->request.type == 'Q'){
-                    question q;
-                    memcpy(&q, this->request.content, sizeof(q));
+            running = true;
 
-                    if(this->begin){
-                        cp.printBeginGame();
-                        this->begin = false;
+            while(running){
+                this->bytesRecv = recv(this->socketCommunication, &this->request, sizeof(this->request), 0);
+
+                if(this->bytesRecv > 0){
+
+                    if(this->request.type == 'Q'){
+                        question q;
+                        memcpy(&q, this->request.content, sizeof(q));
+
+                        if(this->begin){
+                            cp.printBeginGame();
+                            this->begin = false;
+                        }
+
+                        option = this->getUserResponseQuestion('A'+(numQuest++), &q);
+
+                        if(option == -1){
+                            memset(&this->response, 0, sizeof(this->response));
+                            this->response.type = 'X';
+                            send(this->socketCommunication, &this->response, sizeof(this->response), 0);
+                            cout << "El cliente ha cerrado la conexión con el servidor." << endl;
+                            running = false;
+                            break;
+                        }
+
+                        if(option == q.opctionCorrect){
+                            cp.printCorrectQuestion();
+                        }else{
+                            cp.printIncorrectQuestion();
+                        }
+
+                        memset(&this->response, 0, sizeof(this->response));
+                        this->response.type = 'R';
+                        memcpy(this->response.from, this->nickname.c_str(), sizeof(this->nickname.c_str()));
+                        memcpy(this->response.content, to_string(option).c_str(), to_string(option).size());
+                        send(this->socketCommunication, &this->response, sizeof(this->response), 0);
                     }
 
-                    option = this->getUserResponse('A'+(numQuest++), &q, 1, 3);
-
-                    if(option == q.opctionCorrect){
-                        cp.printCorrectQuestion();
-                    }else{
-                        cp.printIncorrectQuestion();
+                    if(this->request.type == 'N'){
+                        cp.printExit();
+                        break;
                     }
 
-                    memset(&this->response, 0, sizeof(this->response));
-                    this->response.type = 'R';
-                    memcpy(this->response.from, this->nickname.c_str(), sizeof(this->nickname.c_str()));
-                    memcpy(this->response.content, to_string(option).c_str(), to_string(option).size());
-                    send(this->socketCommunication, &this->response, sizeof(this->response), 0);
-                }
+                    if(this->request.type == 'E'){
+                        cout << "Partida finalizada. Esperando a los demás jugadores..." << endl;
+                    }
 
-                if(this->request.type == 'E'){
-                    cout << "Partida finalizada. Esperando a los demás jugadores..." << endl;
-                    this->begin = true;
-                }
+                    if(this->request.type == 'Z'){
+                        memset(&this->response, 0, sizeof(this->response));
+                        
+                        cp.printWinner(request.content);
 
-                if(this->request.type == 'Z'){
-                    
-                    memset(&this->response, 0, sizeof(this->response));
-                    
-                    cp.printWinner(request.content);
-
-                    option = this->getUserResponse(this->response.type, nullptr, 1, 2);
-
-                    if(option == 1)
-                        this->response.type = 'S';
-                    else 
                         this->response.type = 'N';
+                        send(this->socketCommunication, &this->response, sizeof(this->response), 0);
+                    }
+                    
+                    memset(&this->response, 0, sizeof(this->response));
 
+                }else if (this->bytesRecv == 0) {
+                    cout << "El servidor ha cerrado la conexión." << endl;
+                    running = false;
+                }else if (this->bytesRecv < 0) {
+                    this->response.type = 'X';
                     send(this->socketCommunication, &this->response, sizeof(this->response), 0);
+                    cout << "El cliente ha cerrado la conexión con el servidor." << endl;
+                    running = false;
                 }
-                
-                memset(&this->response, 0, sizeof(this->response));
-                this->bytesRecv = 0;
             }
 
-            this->bytesRecv = 0;
             memset(&this->response, 0, sizeof(this->response));
             memset(&this->request, 0, sizeof(this->request));
             close(this->socketCommunication);
@@ -289,18 +344,32 @@ class Cliente{
             return EXIT_SUCCESS;
         }
 
-        int getUserResponse(char type, question* q, int minOpc, int maxOpc){
+        int getUserResponseDecision(){
+            
+            cp.printNextGame();
+            
+            return getOption(1, 2);
+        }
+
+        int getUserResponseQuestion(char type, question* q){
+            
+            cp.printOptionsQuestion(type, q);
+            
+            return getOption(1, 3);
+        }
+
+        int getOption(int minOpc, int maxOpc){
             int option;
 
-            if(type == 'Z'){
-                cp.printNextGame();
-            }else{
-               cp.printOptionsQuestion(type, q);
-            }
-                        
             do {
                 cout << "Ingresa una opción: ";
                 cin >> option;
+
+                if(running == 0){
+                    cout << "La opción fue cancelada debido a una señal de cierre..." << std::endl;
+                    return -1;
+                }
+
 
                 if (option < minOpc || option > maxOpc) {
                     cout << "Opción inválida. Por favor, ingrese una opción: " << endl;

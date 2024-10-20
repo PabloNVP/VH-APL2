@@ -6,8 +6,8 @@ servidor: servidor.cpp servidor.hpp
 cliente: cliente.cpp cliente.hpp
 	g++ -o cliente cliente.cpp
 
-force:
-	kill -9 $(ps -e | grep servidor | awk '{ print $1 }')
+exit:
+	pkill -10 servidor
 
 cleanall:
-	rm -f servidor cliente
+	rm -f servidor cliente /dev/shm/sem.server_semaphore

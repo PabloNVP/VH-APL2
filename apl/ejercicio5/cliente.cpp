@@ -13,6 +13,7 @@ int main(const int argc, const char* argv[]) {
 
     Cliente client; 
 
+
     signal(SIGINT, SIG_IGN);
     signal(SIGUSR1, client.signal_handler);
 
@@ -22,14 +23,12 @@ int main(const int argc, const char* argv[]) {
     if(client.init())
         return EXIT_FAILURE;
     
-    cout << "==============================" << endl;
-    cout << "¡¡¡ Bienvenido a Pregunta2 !!!" << endl;
-    cout << "==============================" << endl;
+    client.printWelcome();
 
     if(client.run())
         return EXIT_FAILURE;
     
-    cout << "El cliente se ha cerrado correctamente." << endl;
+    client.printClose();
      
     return EXIT_SUCCESS; 
 }

@@ -27,7 +27,7 @@ int main(const int argc, const char* argv[]) {
     if(server.run())
         return EXIT_FAILURE;
     
-    cout << "El servidor se ha apagado correctamente." << endl;
+    cout << "El servidor se ha cerrado correctamente." << endl;
      
     return 0; 
 }

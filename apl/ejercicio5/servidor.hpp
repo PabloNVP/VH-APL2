@@ -1,6 +1,9 @@
 #ifndef SERVIDOR_HPP
 #define SERVIDOR_HPP
 
+/******************************************
+ * Librerias del servidor
+******************************************/
 #include <iostream>
 #include <fstream> 
 #include <cstring>  
@@ -15,6 +18,9 @@
 #include <random>    
 #include <mutex>
 #include <condition_variable>
+#include <semaphore.h>
+#include <fcntl.h> // O_CREAT, O_EXCL
+#include <sys/stat.h> // S_IRUSR, S_IWUSR
 
 /******************************************************
 ###                 INTEGRANTES                     ###
@@ -43,6 +49,7 @@ struct message {
  * Estructura de datos del cliente
 ******************************************/
 struct client {
+    int socket;
     string name;
     int score;
     int questions;
@@ -69,10 +76,17 @@ struct question{
 ******************************************/
 struct room{
     int num;
+    int countUsers;
     vector<int> serieQuestions;
     condition_variable cv;
     int endThread = 0;
     mutex mtxroom;
+
+    room(int numRoom, int limitUsers, int countQuest, int limitQuest){
+        this->num = numRoom;
+        this->countUsers = limitUsers;
+        this->loadSerieQuestions(countQuest, limitQuest);
+    }
 
     void loadSerieQuestions(int count, int limit) {
         vector<int> numbers;
@@ -88,8 +102,14 @@ struct room{
     }
 };
 
+/***********************************************
+ * Variable que maneja el estado del servidor
+***********************************************/
 static bool running = false;
 
+/***********************************************
+ * Clase principal del servidor de preguntados
+***********************************************/
 class Servidor {
     private:
         int port; // Puerto del servidor.
@@ -98,14 +118,15 @@ class Servidor {
         FILE* file; // Archivo de preguntas.
         struct sockaddr_in socketConfig; // Socket de configuración del servidor.
         int socketListening; // Socket de escucha del servidor.
-        map<int, client> users; // Map de socket por usuario.
-        map<int, map<int, client>> games; // Map de partida por usuario.
+        vector<client> users; // Vector de usuarios.
+        map<int, vector<client>> games; // Map de partida por usuario.
         map<int, question> questions;
         int gamesCount; // Cantidad de partidas.
         int questionsCount; // Cantidad de preguntas en el archivo.
         mutex mtxUsers; // Semaforo para el Map de usuarios.
         mutex mtxGames; // Semaforo para el Map de partidas.
         mutex mtxQuestions; // Semaforo para el Map de preguntas.
+        const char* sem_path = "/server_semaphore";
 
     public:
         Servidor(): gamesCount(0) , questionsCount(0) {};
@@ -137,27 +158,35 @@ class Servidor {
 
                 try{
                     if(option == "-p" || option == "--puerto"){
-                        int port =  stoi(value);
+                        this->port =  stoi(value);
 
-                        if(port < MIN_PORT || port > MAX_PORT){
+                        if(this->port < MIN_PORT || this->port > MAX_PORT){
                             cout << "Error de parámetro: El rango válido del puerto es de " <<  MIN_PORT << " a " << MAX_PORT << "." << endl;
                             return EXIT_FAILURE;
                         }
-
-                        this->port = port;
-                    }else if(option == "-u" || option == "--usuarios")
+                    }else if(option == "-u" || option == "--usuarios"){
                         this->usersLimit = stoi(value);
-                    else if(option == "-a" || option == "--archivo"){
-                        this->file = fopen("preguntas.csv", "r");
+
+                        if(this->usersLimit < 1){
+                            cout << "Error de parámetro: La cantidad de usuarios debe ser mayor a 0." << endl;
+                            return EXIT_FAILURE;
+                        }
+                    }else if(option == "-a" || option == "--archivo"){
+                        this->file = fopen(value.c_str(), "r");
 
                         if (this->file == nullptr) {
                             cout << "Error de parámetro: El archivo no existe." << endl;
                             return EXIT_FAILURE; 
                         }
                     }
-                    else if(option == "-c" || option == "--cantidad")
+                    else if(option == "-c" || option == "--cantidad"){
                         this->questionsLimit = stoi(value);
-                    else{
+
+                        if(this->questionsLimit < 1){
+                            cout << "Error de parámetro: La cantidad de preguntas debe ser mayor a 0." << endl;
+                            return EXIT_FAILURE;
+                        }
+                    }else{
                         this->printError(argv[0]);
                         return EXIT_FAILURE;
                     }
@@ -170,6 +199,18 @@ class Servidor {
                 argc-=2;
             }
 
+            return EXIT_SUCCESS;
+        }
+
+        bool isRunningServer(){
+            sem_t* sem = sem_open(this->sem_path, O_CREAT | O_EXCL, S_IRUSR | S_IWUSR, 1);
+    
+            if (sem == SEM_FAILED) {
+                sem_close(sem);
+                return EXIT_FAILURE;
+            }
+
+            sem_close(sem);
             return EXIT_SUCCESS;
         }
         
@@ -189,9 +230,22 @@ class Servidor {
         }
 
         bool init(){
+
+            // Verificar si hay otra instancia del servidor ejecutandose.
+            if(this->isRunningServer()){
+                cout << "El servidor ya está en ejecución." << endl;
+                return EXIT_FAILURE;
+            }
+
             // Configurar el socket de escucha.
             if((this->socketListening = socket(AF_INET, SOCK_STREAM, 0)) < 0){
                 cout << "Error al crear el socket de escucha." << endl;
+                return EXIT_FAILURE;
+            }
+
+            int opt = 1; // Permite reutilizar la dirección y puerto rápidamente
+            if (setsockopt(this->socketListening, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+                cout << "Error configurando la opción SO_REUSEADDR\n" << endl;
                 return EXIT_FAILURE;
             }
 
@@ -236,40 +290,42 @@ class Servidor {
 
             running = true;
 
+            thread tt(&checkDisconnect, this);
+            tt.detach();
+
             while (running)
             {
                 int socketComunicacion = accept(this->socketListening, (struct sockaddr *)NULL, NULL);
 
-                 if(running == false){
+                if(running == false){
                     if(this->games.size()>0){
-                        cout << " >> Se intenta cerrar el servidor pero hay partidas existentes." <<  endl;
+                        cout << " >> Se intenta cerrar el servidor pero hay partidas activas." <<  endl;
                         running = true;
                         continue;
                     }
 
                     cout << " >> Se esta cerrando el servidor..." <<  endl;
+
+                    mtxUsers.lock();
+                    for(auto& user : this->users){
+                        close(user.socket);
+                    }
+                    mtxUsers.unlock();
+
                     break;
                 }   
 
-                cout << " >> Se ha conectado un nuevo usuario con id: " << socketComunicacion << endl;
+                if( socketComunicacion >= 0){
+                    cout << " >> Se ha conectado un nuevo usuario con id: " << socketComunicacion << endl;
 
-                this->createNewUser(socketComunicacion);
-
-                if(this->users.size() == this->usersLimit){
-                    this->mtxUsers.lock();
-                    this->mtxGames.lock();
-                    this->games[gamesCount] = move(this->users);
-                    this->mtxGames.unlock();
-                    this->users.clear();
-                    this->mtxUsers.unlock();
-
-                    thread game(gameStart, this, this->gamesCount);
-                    game.detach();
-
-                    this->gamesCount++;
+                    this->createNewUser(socketComunicacion);
                 }
+
+                this->checkCreateGame();
             }
 
+            running = false;
+            sem_unlink(this->sem_path);
             fclose(this->file);
             close(this->socketListening);
 
@@ -277,21 +333,44 @@ class Servidor {
         }
 
         void createNewUser(int socketUser){
-            client newUser {"", 0, 0};
+            client newUser {socketUser, "", 0, 0};
 
             mtxUsers.lock();
-            this->users.insert(make_pair(socketUser, newUser));
+            this->users.push_back(newUser);
             mtxUsers.unlock();
+        }
+
+        void checkCreateGame(){
+           
+           this->mtxUsers.lock();
+        
+            if(this->users.size() >= this->usersLimit){
+                
+                this->mtxGames.lock();
+
+                this->games[this->gamesCount].insert(this->games[this->gamesCount].end(),
+                    make_move_iterator(this->users.begin()),
+                    make_move_iterator(this->users.begin() + this->usersLimit));
+
+                this->users.erase(this->users.begin(), this->users.begin() + this->usersLimit);
+
+                thread game(gameStart, this, this->gamesCount);
+                game.detach();
+
+                this->gamesCount++;
+
+                this->mtxGames.unlock();
+            }
+
+            this->mtxUsers.unlock();
         }
 
         static void gameStart(Servidor* server, int numRoom){
             vector<thread> tts;
-            room newRoom;
-            newRoom.num = numRoom;
-            newRoom.loadSerieQuestions(server->questionsCount, server->questionsLimit);
+            room newRoom(numRoom, server->usersLimit, server->questionsCount, server->questionsLimit);
 
             for (auto& user : server->games[numRoom]) {        
-                tts.push_back(thread(&handleClient, server, &newRoom, user.first, &user.second));
+                tts.push_back(thread(&handleClient, server, &newRoom, &user));
             }
 
             cout << " >> Se ha iniciado una partida con numero de sala: " << numRoom << endl;
@@ -299,40 +378,45 @@ class Servidor {
             for(auto& tt : tts){
                 tt.join();
             }
-
+            
             server->mtxGames.lock();
             server->games.erase(numRoom);
             server->mtxGames.unlock();
-
+ 
             cout << " >> Se ha finalizado una partida con numero de sala: " << numRoom << endl;
         }
 
-        static void handleClient(Servidor* server, room* yourRoom, int socket, client* userClient){
-            
+        static void handleClient(Servidor* server, room* yourRoom, client* userClient){
             int numQuest = 0;
             int bytesRecv = 0;
-            message msg;
-            
+            message request, response;
+
             do{
-                //RECIBO
-                if(msg.type == 'S' || msg.type == 'N'){
-                    if(msg.type == 'S' )
-                        cout << "QUIERO JUGAR OTRA" << endl;
-                    else
-                        cout << "NO QUIERO JUGAR OTRA" << endl;
-                    
-                    memset(&msg, 0, sizeof(msg));
+                if(request.type == 'X'){
+                    memset(&response, 0, sizeof(response));
+                    memset(&request, 0, sizeof(request));
+                    bytesRecv = -1;
+                    yourRoom->countUsers--;
+                    userClient->score = -1;
+                    yourRoom->cv.notify_all();
                     break;
                 }
 
-                if(msg.type == 'R'){
-                    userClient->setName(msg.from);
+                if(request.type == 'N'){
+                    memset(&response, 0, sizeof(response));
+                    response.type = 'N';
+                    send(userClient->socket, &response, sizeof(response), 0);
+                    
+                    memset(&request, 0, sizeof(request));
+                    break;
+                }
 
-                    if(server->questions[yourRoom->serieQuestions[numQuest-1]].opctionCorrect == stoi(msg.content)){
+                if(request.type == 'R'){
+                    userClient->setName(request.from);
+
+                    if(server->questions[yourRoom->serieQuestions[numQuest-1]].opctionCorrect == stoi(request.content)){
                         userClient->score++;
                     }
-
-                    cout << userClient->name << " ; " << userClient->score << endl;
 
                     if(numQuest == server->questionsLimit){
 
@@ -340,43 +424,89 @@ class Servidor {
                     
                         yourRoom->endThread++;
                         
-                        if (yourRoom->endThread == server->usersLimit) {
+                        if (yourRoom->endThread == yourRoom->countUsers) {
                             yourRoom->cv.notify_all();
                         } else {
-                            msg.type = 'E';
-                            memset(msg.content, 0, sizeof(msg.content));
-                            send(socket, &msg, sizeof(msg), 0);
-                            yourRoom->cv.wait(lock, [&] { return yourRoom->endThread == server->getUserLimit(); });
+                            response.type = 'E';
+                            memset(response.content, 0, sizeof(response.content));
+                            send(userClient->socket, &response, sizeof(response), 0);
+                            yourRoom->cv.wait(lock, [&] { return yourRoom->endThread >= yourRoom->countUsers; });
                         }
 
-                        /** Calcular resultado */
-                        int max = -1;
-                        memset(&msg, 0, sizeof(msg));
-                        msg.type = 'Z';
-                        for (auto& user : server->games[yourRoom->num]) {        
-                            if(max < user.second.score){
-                                memcpy(msg.content, user.second.name.c_str(), user.second.name.size());
-                                max = user.second.score;
-                            }
-                        }
-                        
-                        send(socket, &msg, sizeof(msg), 0);
+                        string result = getResults(&server->games[yourRoom->num]);
+
+                        memset(&response, 0, sizeof(response));
+                        response.type = 'Z';
+                        memcpy(response.content, result.c_str(), result.size());
+                        send(userClient->socket, &response, sizeof(response), 0);
                         continue;
                     }
                 }
 
-                //LIMPIEZA
-                memset(&msg, 0, sizeof(msg));
-                bytesRecv = 0;
-
                 //ENVIO
-                msg.type = 'Q';
-                memcpy(msg.content, &server->questions[yourRoom->serieQuestions[numQuest]], sizeof(server->questions[yourRoom->serieQuestions[numQuest]]));
+                response.type = 'Q';
+                memcpy(response.content, &server->questions[yourRoom->serieQuestions[numQuest]], 
+                        sizeof(server->questions[yourRoom->serieQuestions[numQuest]]));
                 numQuest++;
-                send(socket, &msg, sizeof(msg), 0);
-            }while ((bytesRecv = recv(socket, &msg, sizeof(msg), 0)) > 0);
+                send(userClient->socket, &response, sizeof(response), 0);
+            }while ((bytesRecv = recv(userClient->socket, &request, sizeof(request), 0)) > 0);
             
-            close(socket);
+            if (bytesRecv <= 0) {
+                cout << " >> Se ha cerrado conexión con el usuario con id: " << userClient->socket << endl;
+            }else{
+                cout << " >> Se ha desconectado el usuario con id: " << userClient->socket << endl;
+            }
+
+            close(userClient->socket);
+        }
+
+        static void checkDisconnect(Servidor* server) {
+            while (running) {
+                for (auto it = server->users.begin(); it != server->users.end();) {
+                    char buffer[1];
+                    int result = recv(it->socket, buffer, sizeof(buffer), MSG_PEEK | MSG_DONTWAIT);
+                    if (result == 1) {
+                        cout << " >> Se ha cerrado conexión con el usuario en espera con id: " << it->socket << endl;
+                        close(it->socket);
+                        server->mtxUsers.lock();
+                        it = server->users.erase(it);
+                        server->mtxUsers.unlock();
+                    } else {
+                        ++it;
+                    }
+                }
+                
+                sleep(2);
+            }
+        }
+
+        static string getResults(vector<client>* users){
+            int max = -1, count = 0;
+            string result;
+            
+            for (auto& user : *users) {        
+                if(max < user.score){
+                    result = user.name;
+                    max = user.score;
+                    count = 0;
+                }else if(max == user.score){
+                    result += ", " + user.name;
+                    count++;
+                }
+            }
+
+            if(max > -1){
+                if(count == 0){
+                    return "El ganador de la partida es " + result + " con " + to_string(max) + " respuesta/s correcta/s.";
+                }else{
+                    if (count == (users->size()-1))
+                        return "Hubo un empate entre " + result + " con " + to_string(max) + " respuesta/s correcta/s.";
+                    else
+                        return "Los ganadores de la partida son " + result + " con " + to_string(max) + " respuesta/s correcta/s.";
+                }
+            }
+
+            return "No hubo ganadores porque todos los participantes se desconectaron.";
         }
 
         bool loadQuestions() {
