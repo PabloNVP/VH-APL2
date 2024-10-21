@@ -1,7 +1,7 @@
 all : servidor cliente
 
 servidor: servidor.cpp servidor.hpp
-	g++ -o servidor servidor.cpp
+	g++ -o servidor servidor.cpp -lpthread
 
 cliente: cliente.cpp cliente.hpp
 	g++ -o cliente cliente.cpp
