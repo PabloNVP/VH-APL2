@@ -1,0 +1,14 @@
+Ejercicio 4
+Objetivos de aprendizaje: uso de memoria compartida y semáforos para IPC, sincronización de
+procesos.
+Implementar el juego “Preguntados”, para ello deberá crear dos procesos no emparentados que se
+comuniquen con memoria compartida y se sincronicen con semáforos.
+Deberá existir un proceso Servidor que lea de un archivo separado por comas las preguntas, el
+número de respuesta correcta y 3 opciones a mostrar; y que va enviando al proceso Cliente las
+mismas y llevando el puntaje. El servidor debe hacer una partida de N preguntas (por parámetro) y
+llegado a la cantidad finaliza la partida y se debe quedar esperando nuevas partidas.
+Ejemplo del archivo de preguntas:
+¿De qué color era el caballo blanco de San Martín?,2,Negro,Blanco,Marrón
+El proceso Cliente debe identificar al jugador al comenzar, va mostrando las preguntas y las
+opciones, y envía la respuesta al Servidor, mostrando luego el resultado final del puntaje.
+

@@ -1,0 +1,16 @@
+Ejercicio 3
+Objetivos de aprendizaje: uso de FIFO para IPC, opcionalmente select() o poll() para eventos de E/S
+Se desea simular un sistema de sensores de huellas dactilares para aperturas de puertas y molinetes,
+que se comunican con un proceso centralizado que valida la huella si está registrada en un archivo y
+entonces le devuelve al sensor si la huella es válida o no.
+Este proceso abre un FIFO para leer las entradas que le envían los distintos sensores y registra en un
+archivo de log (que toma como parámetro) la fecha y hora de la lectura, el número de sensor, la
+identificación de la huella o si no pudo identificarla. Debe quedar ejecutando como proceso demonio,
+y manejar correctamente su finalización a través de una señal.
+A modo de representación numérica de la huella leída, se debe usar un número entero de 10 dígitos
+que es el que está registrado en el archivo.
+Los procesos lectorestoman por parámetro el número que les corresponde, y para hacer la simulación
+envían cada una cierta cantidad de segundos el mensaje vía el FIFO con su número de sensor y el ID a
+validar, que lo debe ir leyendo de un archivo de lecturas simuladas. El proceso de un lector finaliza
+luego de una cantidad de mensajes enviados, indicado también por parámetro. Puede haber varios
+lectores ejecutando al mismo tiempo.

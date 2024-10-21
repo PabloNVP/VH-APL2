@@ -1,0 +1,14 @@
+Ejercicio 5
+Objetivos de aprendizaje: uso de sockets para IPC, comunicación de procesos remotos
+Implementar juego “Preguntados” pero a través de conexiones de red, pudiendo admitir más de un
+cliente por servidor.
+El servidor debe tomar por parámetro el puerto, mientras que el cliente debe solicitar la dirección IP
+(o el nombre) del servidor y el puerto del mismo.
+Aclaraciones:
+1. Si el servidor se cae (deja de funcionar) o es detenido, los clientes deben ser notificados o
+identificar el problema de conexión y cerrar de forma controlada.
+2. Si alguno de los clientes se cae o es detenido, el servidor debe poder identificar el problema
+y cerrar la conexión de forma controlada y seguir funcionando hasta que solo quede un
+cliente.
+3. Se deberá llevar un marcador indicando cuantos aciertos realizó cada jugador y al final
+mostrar el ganador.

@@ -1,0 +1,14 @@
+Ejercicio 2
+Objetivos de aprendizaje: uso de threads, sincronización de threads
+Se pretende realizar un proceso de búsquedas de cadenas en archivo similar a grep pero que utilice
+paralelismo para poder aprovechar el multiprocesamiento.
+Se deberá generar un programa que reciba por parámetros 3 valores: un path a un directorio de
+entrada, el nivel de paralelismo (cantidad de threads a generar) y una cadena a buscar. No es necesario
+buscar con expresiones regulares, la cadena a buscar es un literal en cualquier parte del contenido del
+archivo, tampoco es necesaria la búsqueda recursiva de los archivos.
+El proceso debe crear los threads solicitados, e ir pasándole de a un archivo por vez a procesar. Cuando
+el thread termina su proceso, se le asigna un nuevo archivo. El thread debe ser el mismo a lo largo de
+la vida del proceso (no se crea un thread por archivo), sino que son los mismos N threads desde el
+comienzo hasta que se agotan los archivos.
+Se deberá mostrar por pantalla:
+Nro de Thread:El nombre del archivo:El número de línea donde se encontró el string buscado

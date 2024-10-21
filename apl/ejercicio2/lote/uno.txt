@@ -1,0 +1,9 @@
+Ejercicio 1
+Objetivos de aprendizaje: Generación de procesos- manejo de jerarquías.
+Se desea generar mediante el uso de la función fork la siguiente jerarquía de procesos.
+
+Cada proceso deberá mostrar por pantalla la siguiente información:
+Soy el proceso NOMBRE con PID nnnn, mi padre es PPID
+Dado que los procesos no realizan ningún procesamiento en sí, realizar una espera hasta que se
+presione una tecla antes de finalizar para permitir verificar con los comandos ps o pstree la jerarquía
+de procesos generada.
