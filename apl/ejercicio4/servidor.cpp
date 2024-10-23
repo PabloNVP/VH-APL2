@@ -1,3 +1,12 @@
+/**
+###                 INTEGRANTES                     ###
+###     Collazo, Ignacio Lahuel     - CONFIDENCE    ### 
+###     Pozzato, Alejo Martin       - CONFIDENCE    ### 
+###     Rodriguez, Emanuel          - CONFIDENCE    ###
+###     Rodriguez, Pablo            - CONFIDENCE    ### 
+###     Vazquez Petracca, Pablo N.  - CONFIDENCE    ###
+*/
+
 #include "servidor.hpp"
 
 bool partida_en_progreso = false; // Variable global para controlar señales
