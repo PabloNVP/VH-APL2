@@ -1,3 +1,12 @@
+/**
+###                 INTEGRANTES                     ###
+###     Collazo, Ignacio Lahuel     - CONFIDENCE    ### 
+###     Pozzato, Alejo Martin       - CONFIDENCE    ### 
+###     Rodriguez, Emanuel          - CONFIDENCE    ###
+###     Rodriguez, Pablo            - CONFIDENCE    ### 
+###     Vazquez Petracca, Pablo N.  - CONFIDENCE    ###
+*/
+
 #include <fcntl.h>
 #include <unistd.h>
 #include <iostream>
