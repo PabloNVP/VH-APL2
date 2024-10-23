@@ -1,3 +1,12 @@
+/**
+###                 INTEGRANTES                     ###
+###     Collazo, Ignacio Lahuel     - CONFIDENCE    ### 
+###     Pozzato, Alejo Martin       - CONFIDENCE    ### 
+###     Rodriguez, Emanual          - CONFIDENCE    ###
+###     Rodriguez, Pablo            - CONFIDENCE    ### 
+###     Vazquez Petracca, Pablo N.  - CONFIDENCE    ###
+*/
+
 #include "cliente.hpp"
 
 int lf; // Variable global para controlar el lock file
