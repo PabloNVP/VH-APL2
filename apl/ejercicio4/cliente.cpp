@@ -61,7 +61,7 @@ int crear_shm() {
 void crear_sem(sem_t ** sem_servidor, sem_t ** sem_cliente, sem_t ** sem_conexion) {
     *sem_servidor = sem_open(NOMBRE_SEM_SERVIDOR, 0);
     if (*sem_servidor == SEM_FAILED) {
-        cerr << "[Cliente] - Error: No se pudo abrir el semaforo del servidor." << endl;
+        cerr << "[Cliente] - Error: No hay ningun servidor ejecutando, por ende no hay partidas disponibles." << endl;
         exit(EXIT_FAILURE);
     }
 
