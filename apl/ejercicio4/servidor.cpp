@@ -90,10 +90,17 @@ void handler_senial(int sigId) {
             close(lf);
             unlink(LOCK_FILE);
             exit(EXIT_SUCCESS);
-        } else {
-            cout << "[Servidor] - Senial SIGUSR1 recibida, pero hay una partida en progreso. Ignorando senial." << endl << endl;
+         } else {
+            cout << "[Servidor] - Senial SIGUSR1 recibida, pero hay una partida en progreso. Ignorando senial." << endl << endl
+                 << "[Servidor] - Por favor, responda la pregunta." << endl << endl;
         }
     }
+}
+
+void barajar_preguntas(Pregunta * shm, int cant_preguntas) {
+    random_device rd;
+    default_random_engine g(rd());
+    shuffle(shm, shm + cant_preguntas, g);
 }
 
 void leer_preguntas(const fs::path & archivo, Pregunta * shm, int cant_preguntas) {
@@ -128,6 +135,8 @@ void leer_preguntas(const fs::path & archivo, Pregunta * shm, int cant_preguntas
     }
 
     file.close();
+
+    barajar_preguntas(shm, cant_preguntas);
 }
 
 int crear_shm(int cant_preguntas) {
@@ -197,11 +206,9 @@ int main(int argc, char * argv[]) {
 
     fs::path archivo;
     int cant_preguntas, opt;
-    struct sigaction action;
-    action.sa_handler = handler_senial;
 
     signal(SIGINT, SIG_IGN);
-    sigaction(SIGUSR1, &action, NULL);
+    signal(SIGUSR1, handler_senial);
 
     if (argc < MIN_PARAMS_REQ) {
         cout << "[Servidor] - Error: Faltan argumentos obligatorios. Intente nuevamente." << endl; 
