@@ -1,11 +1,11 @@
-/**
-###                 INTEGRANTES                     ###
-###     Collazo, Ignacio Lahuel     - CONFIDENCE    ### 
-###     Pozzato, Alejo Martin       - CONFIDENCE    ### 
-###     Rodriguez, Emanuel          - CONFIDENCE    ###
-###     Rodriguez, Pablo            - CONFIDENCE    ### 
-###     Vazquez Petracca, Pablo N.  - CONFIDENCE    ###
-*/
+
+/**############ INTEGRANTES ###############
+###     Collazo, Ignacio Lahuel         ### 
+###     Pozzato, Alejo Martin           ### 
+###     Rodriguez, Emanual              ###
+###     Rodriguez, Pablo                ### 
+###     Vazquez Petracca, Pablo N.      ### 
+#########################################*/
 
 #include <iostream>
 #include <cstring>

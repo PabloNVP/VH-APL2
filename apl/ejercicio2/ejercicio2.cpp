@@ -1,13 +1,12 @@
 #include "ejercicio2.hpp"
 
-/**
-###                 INTEGRANTES                     ###
-###     Collazo, Ignacio Lahuel     - CONFIDENCE    ###
-###     Pozzato, Alejo Martin       - CONFIDENCE    ###
-###     Rodriguez, Emanual          - CONFIDENCE    ###
-###     Rodriguez, Pablo            - CONFIDENCE    ###
-###     Vazquez Petracca, Pablo N.  - CONFIDENCE    ###
-*/
+/**############ INTEGRANTES ###############
+###     Collazo, Ignacio Lahuel         ### 
+###     Pozzato, Alejo Martin           ### 
+###     Rodriguez, Emanual              ###
+###     Rodriguez, Pablo                ### 
+###     Vazquez Petracca, Pablo N.      ### 
+#########################################*/
 
 int main(int argc, char *argv[]) {
     if (argc < 5) {
@@ -36,7 +35,7 @@ int main(int argc, char *argv[]) {
                 numThreads = stoi(argv[++i]);
                 if (numThreads <= 0)
                 {
-                    cerr << "Error: El número de hilos debe ser un entero positivo.\n";
+                    cerr << "Error: El nï¿½mero de hilos debe ser un entero positivo.\n";
                     return 1;
                 }
             }

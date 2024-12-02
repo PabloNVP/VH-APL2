@@ -1,11 +1,11 @@
-/**
-###                 INTEGRANTES                     ###
-###     Collazo, Ignacio Lahuel     - CONFIDENCE    ### 
-###     Pozzato, Alejo Martin       - CONFIDENCE    ### 
-###     Rodriguez, Emanuel          - CONFIDENCE    ###
-###     Rodriguez, Pablo            - CONFIDENCE    ### 
-###     Vazquez Petracca, Pablo N.  - CONFIDENCE    ###
-*/
+
+/**############ INTEGRANTES ###############
+###     Collazo, Ignacio Lahuel         ### 
+###     Pozzato, Alejo Martin           ### 
+###     Rodriguez, Emanual              ###
+###     Rodriguez, Pablo                ### 
+###     Vazquez Petracca, Pablo N.      ### 
+#########################################*/
 
 #include <string>
 #include <cstring>
@@ -19,6 +19,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <semaphore.h>
+#include <algorithm>   // Para std::shuffle
+#include <random>      // Para random_device y default_random_engine
 
 #define NOMBRE_MEMORIA "mem4"
 #define NOMBRE_SEM_SERVIDOR "servidor4"

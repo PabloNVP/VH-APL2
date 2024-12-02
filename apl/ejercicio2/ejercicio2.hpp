@@ -1,14 +1,14 @@
 #ifndef EJERCICIO2_HPP_INCLUDED
 #define EJERCICIO2_HPP_INCLUDED
 
-/**
-###                 INTEGRANTES                     ###
-###     Collazo, Ignacio Lahuel     - CONFIDENCE    ###
-###     Pozzato, Alejo Martin       - CONFIDENCE    ###
-###     Rodriguez, Emanual          - CONFIDENCE    ###
-###     Rodriguez, Pablo            - CONFIDENCE    ###
-###     Vazquez Petracca, Pablo N.  - CONFIDENCE    ###
-*/
+
+/**############ INTEGRANTES ###############
+###     Collazo, Ignacio Lahuel         ### 
+###     Pozzato, Alejo Martin           ### 
+###     Rodriguez, Emanual              ###
+###     Rodriguez, Pablo                ### 
+###     Vazquez Petracca, Pablo N.      ### 
+#########################################*/
 
 #include <iostream>
 #include <thread>
@@ -42,7 +42,7 @@ void buscarEnArchivo(const string &nombreArchivo, const string &cadenaABuscar, i
         if (line.find(cadenaABuscar) != string::npos) {
             lock_guard<mutex> lock(mtx);
             cout << "Nro de Thread: " << threadId << " - El nombre del archivo: "
-                      << nombreArchivo << " - El numero de línea: " << lineNumber << endl;
+                      << nombreArchivo << " - El numero de lï¿½nea: " << lineNumber << endl;
         }
     }
 }

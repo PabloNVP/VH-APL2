@@ -22,14 +22,13 @@
 #include <fcntl.h> // O_CREAT, O_EXCL
 #include <sys/stat.h> // S_IRUSR, S_IWUSR
 
-/******************************************************
-###                 INTEGRANTES                     ###
-###     Collazo, Ignacio Lahuel     - CONFIDENCE    ### 
-###     Pozzato, Alejo Martin       - CONFIDENCE    ### 
-###     Rodriguez, Emanual          - CONFIDENCE    ###
-###     Rodriguez, Pablo            - CONFIDENCE    ### 
-###     Vazquez Petracca, Pablo N.  - CONFIDENCE    ###
-******************************************************/
+/**############ INTEGRANTES ###############
+###     Collazo, Ignacio Lahuel         ### 
+###     Pozzato, Alejo Martin           ### 
+###     Rodriguez, Emanual              ###
+###     Rodriguez, Pablo                ### 
+###     Vazquez Petracca, Pablo N.      ### 
+#########################################*/
  
 #define MIN_PORT 1024
 #define MAX_PORT 65535
